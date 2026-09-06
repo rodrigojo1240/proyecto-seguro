@@ -1,0 +1,38 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  security-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # 1. Secret Scanning con Gitleaks
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. SAST con Semgrep
+      - name: SAST Analysis (Semgrep)
+        run: |
+          python3 -m pip install semgrep
+          semgrep scan --config p/owasp-top-10 ./
+
+      # 3. SCA con Trivy
+      - name: SCA Dependency Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
